@@ -2,6 +2,7 @@ mod config;
 mod errors;
 mod handlers;
 mod models;
+mod repository;
 mod schemas;
 mod services;
 
@@ -26,7 +27,7 @@ async fn aboba() -> impl IntoResponse {
 }
 
 #[derive(OpenApi)]
-#[openapi(info(title = "Blazingly-fast API!!!", version = "1.0.0"))]
+#[openapi(info(title = "Blazingly-fast axum template API!!!", version = "1.0.0"))]
 struct ApiDoc;
 
 #[derive(Clone)]
@@ -60,7 +61,8 @@ async fn main() {
                 .allow_headers(Any),
         );
 
-    println!("listening on http://{}", &addr);
+    println!("Listening on http://{}", &addr);
+    println!("Swagger on http://{}/docs", &addr);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app.into_make_service())
         .await
