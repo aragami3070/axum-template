@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::{schemas::users::RegisterUser, services::auth::password_hashing::hash_password};
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: Uuid,
@@ -9,6 +11,18 @@ pub struct User {
     pub role: Role,
     #[serde(skip_serializing)]
     pub password_hash: String,
+}
+
+impl From<RegisterUser> for User {
+    fn from(value: RegisterUser) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            name: value.name,
+            email: value.email,
+            role: Role::User,
+            password_hash: hash_password(&value.password),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type)]
