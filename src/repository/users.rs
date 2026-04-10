@@ -94,11 +94,20 @@ impl UserRepository for UserRepo<Postgres> {
         todo!()
     }
 
-    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<()>
+    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<PgRow>
     where
         E: Executor<'e, Database = sqlx::Postgres>,
     {
-        todo!()
+        let user_data: User = user.into();
+        sqlx::query!(
+            "INSERT INTO users (name, email, role, password_hash) VALUES ($1, $2, $3, $4);",
+            &user_data.name,
+            &user_data.email,
+            &String::from(user_data.role),
+            &user_data.password_hash
+        )
+        .fetch_one(executer)
+        .await
     }
 
     async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<()>
