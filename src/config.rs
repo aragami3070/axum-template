@@ -29,7 +29,7 @@ pub async fn get_db_pool(database_url: &str) -> sqlx::PgPool {
 #[derive(Clone)]
 pub struct AppState {
     pub db_pool: Arc<Pool<Postgres>>,
-    pub user_repo: Arc<UserRepo>,
+    pub user_repo: Arc<UserRepo<Postgres>>,
     pub secret_key: String,
     pub secret_refresh_key: String,
 }
