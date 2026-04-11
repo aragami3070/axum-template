@@ -71,4 +71,23 @@ impl TokenService<Postgres> {
             &EncodingKey::from_secret(self.secret.as_bytes()),
         )?)
     }
+
+    fn generate_refresh_token(&self, user: &User) -> Result<String> {
+        let exp = (SystemTime::now() + Duration::from_mins(self.refresh_duration as u64))
+            .duration_since(UNIX_EPOCH)?
+            .as_secs() as usize;
+
+        let claims = Claims {
+            sub: user.id,
+            role: String::from(user.role.clone()),
+            exp,
+            jti: Some(Uuid::new_v4().to_string()),
+        };
+
+        Ok(encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(self.secret_refresh.as_bytes()),
+        )?)
+    }
 }
