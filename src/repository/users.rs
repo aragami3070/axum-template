@@ -1,5 +1,8 @@
 use macroses::NewTypeDeref;
-use sqlx::{Executor, Pool, Postgres, postgres::PgRow};
+use sqlx::{
+    Executor, Pool, Postgres,
+    postgres::{PgQueryResult, PgRow},
+};
 use std::{ops::Deref, sync::Arc};
 use uuid::Uuid;
 
@@ -15,10 +18,14 @@ pub trait UserRepository {
     async fn get_by_id(&self, id: &Uuid) -> sqlx::Result<Option<User>>;
     async fn get_by_email(&self, email: &str) -> sqlx::Result<Option<User>>;
     async fn check_login(&self, email: &str, password_hash: &str) -> sqlx::Result<Option<User>>;
-    async fn create_admin<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<()>
+    async fn create_admin<'e, E>(
+        &self,
+        executer: E,
+        user: RegisterUser,
+    ) -> sqlx::Result<PgQueryResult>
     where
         E: Executor<'e, Database = sqlx::Postgres>;
-    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<PgRow>
+    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<PgQueryResult>
     where
         E: Executor<'e, Database = sqlx::Postgres>;
     async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<()>
@@ -87,26 +94,44 @@ impl UserRepository for UserRepo<Postgres> {
         .await
     }
 
-    async fn create_admin<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<()>
+    async fn create_admin<'e, E>(
+        &self,
+        executer: E,
+        user: RegisterUser,
+    ) -> sqlx::Result<PgQueryResult>
     where
         E: Executor<'e, Database = sqlx::Postgres>,
     {
-        todo!()
-    }
-
-    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<PgRow>
-    where
-        E: Executor<'e, Database = sqlx::Postgres>,
-    {
-        let user_data: User = user.into();
+        let mut user_data: User = user.into();
+        user_data.role = crate::models::users::Role::Admin;
         sqlx::query!(
-            "INSERT INTO users (name, email, role, password_hash) VALUES ($1, $2, $3, $4);",
+            "INSERT INTO users (id, name, email, role, password_hash)
+            VALUES ($1, $2, $3, $4, $5);",
+            user_data.id,
             &user_data.name,
             &user_data.email,
             &String::from(user_data.role),
             &user_data.password_hash
         )
-        .fetch_one(executer)
+        .execute(executer)
+        .await
+    }
+
+    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<PgQueryResult>
+    where
+        E: Executor<'e, Database = sqlx::Postgres>,
+    {
+        let user_data: User = user.into();
+        sqlx::query!(
+            "INSERT INTO users (id, name, email, role, password_hash)
+            VALUES ($1, $2, $3, $4, $5);",
+            user_data.id,
+            user_data.name,
+            user_data.email,
+            String::from(user_data.role),
+            user_data.password_hash
+        )
+        .execute(executer)
         .await
     }
 
