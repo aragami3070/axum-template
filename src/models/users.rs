@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{schemas::users::RegisterUser, services::auth::password_hashing::hash_password};
+use crate::{schemas::users::RegisterUser, services::auth::hashing::hash};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
@@ -20,12 +20,12 @@ impl From<RegisterUser> for User {
             name: value.name,
             email: value.email,
             role: Role::User,
-            password_hash: hash_password(&value.password),
+            password_hash: hash(&value.password),
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 pub enum Role {
     User,
