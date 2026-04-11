@@ -33,3 +33,24 @@ pub struct TokenService<Db: Database> {
     user_repo: Arc<UserRepo<Postgres>>,
 }
 
+impl TokenService<Postgres> {
+    /// Creates a new [`TokenService`].
+    pub fn new(
+        secret: Arc<String>,
+        secret_refresh: Arc<String>,
+        access_duration: usize,
+        token_repo: Arc<TokenRepo<Postgres>>,
+        user_repo: Arc<UserRepo<Postgres>>,
+        refresh_duration: usize,
+    ) -> Self {
+        Self {
+            secret,
+            secret_refresh,
+            token_repo,
+            user_repo,
+            access_duration,
+            refresh_duration,
+        }
+    }
+
+}
