@@ -20,6 +20,18 @@ use config::*;
 
 use crate::handlers::auth::AuthDocs;
 use crate::handlers::auth::AuthRouter;
+
+#[derive(OpenApi)]
+#[openapi(paths(aboba))]
+pub struct AbobaDocs;
+#[utoipa::path(
+    get,
+    path = "/aboba",
+    responses(
+        (status = 200, description = "Aboba", body = String),
+        (status = 500, description = "Технические шокаладки", body = String)
+    )
+)]
 async fn aboba() -> impl IntoResponse {
     "aboba".to_string()
 }
@@ -42,12 +54,15 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
 
-    let open_api = ApiDoc::openapi().nest("/auth", AuthDocs::openapi());
+    let open_api = ApiDoc::openapi()
+        .nest("/auth", AuthDocs::openapi())
+        .nest("/aboba", AbobaDocs::openapi());
+
     let swagger_router = SwaggerUi::new("/docs").url("/api-docs/openapi.json", open_api);
 
-    let auth_router = AuthRouter::set_router().route("/aboba", get(aboba));
-
+    let auth_router = AuthRouter::set_router();
     let app = Router::new()
+        .route("/aboba/aboba", get(aboba))
         .nest("/auth", auth_router)
         .merge(swagger_router)
         .with_state(state)
