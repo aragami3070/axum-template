@@ -13,3 +13,9 @@ use crate::{errors::auth::AuthError, services::auth::tokens::TokenService};
 pub struct AuthLayer {
     pub token_serv: Arc<TokenService<Postgres>>,
 }
+
+#[derive(Clone)]
+pub struct AuthMiddleware<S> {
+    inner: S,
+    token_serv: Arc<TokenService<Postgres>>,
+}
