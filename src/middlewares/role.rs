@@ -11,3 +11,8 @@ pub struct RoleLayer {
     allowed_roles: Vec<Role>,
 }
 
+#[derive(Clone)]
+pub struct RoleGuardMiddleware<S> {
+    inner: S,
+    allowed_roles: Vec<Role>,
+}
