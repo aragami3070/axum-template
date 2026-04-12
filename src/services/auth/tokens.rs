@@ -128,7 +128,14 @@ impl TokenService<Postgres> {
         validation.leeway = 0;
         validation.required_spec_claims.insert("exp".to_string());
 
-        let token_data = decode::<Claims>(token, &decoding_key, &validation)?;
+        let token_data = match decode::<Claims>(token, &decoding_key, &validation) {
+            Ok(t_d) => t_d,
+            Err(e) if *e.kind() == jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                return Err(TokenError::Expired);
+            }
+            Err(e) => return Err(TokenError::Jwt(e)),
+        };
+
         Ok(token_data.claims)
     }
 
