@@ -1,8 +1,5 @@
 use macroses::NewTypeDeref;
-use sqlx::{
-    Executor, Pool, Postgres,
-    postgres::{PgQueryResult, PgRow},
-};
+use sqlx::{Executor, Pool, Postgres, postgres::PgQueryResult};
 use std::{ops::Deref, sync::Arc};
 use uuid::Uuid;
 
@@ -25,7 +22,7 @@ pub trait UserRepository {
     ) -> sqlx::Result<PgQueryResult>
     where
         E: Executor<'e, Database = sqlx::Postgres>;
-    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<PgQueryResult>
+    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = sqlx::Postgres>;
     async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<()>
@@ -117,21 +114,23 @@ impl UserRepository for UserRepo<Postgres> {
         .await
     }
 
-    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<PgQueryResult>
+    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = sqlx::Postgres>,
     {
         let user_data: User = user.into();
-        sqlx::query!(
+        sqlx::query_as!(
+            User,
             "INSERT INTO users (id, name, email, role, password_hash)
-            VALUES ($1, $2, $3, $4, $5);",
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, name, email, role, password_hash;",
             user_data.id,
             user_data.name,
             user_data.email,
             String::from(user_data.role),
             user_data.password_hash
         )
-        .execute(executer)
+        .fetch_one(executer)
         .await
     }
 

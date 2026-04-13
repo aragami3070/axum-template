@@ -1,6 +1,6 @@
 use sqlx::{
     Executor, Pool, Postgres,
-    postgres::{PgQueryResult, PgRow},
+    postgres::{PgQueryResult},
 };
 use std::sync::Arc;
 use uuid::Uuid;
