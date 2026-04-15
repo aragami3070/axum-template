@@ -21,7 +21,7 @@ pub trait UserRepository {
     async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = sqlx::Postgres>;
-    async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<()>
+    async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = sqlx::Postgres>;
 }
@@ -128,10 +128,23 @@ impl UserRepository for UserRepo<Postgres> {
         .await
     }
 
-    async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<()>
+    async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = sqlx::Postgres>,
     {
-        todo!()
+        sqlx::query_as!(
+            User,
+            "UPDATE users
+            SET name = $2, email = $3, role = $4, password_hash = $5
+            WHERE id = $1
+            RETURNING id, name, email, role, password_hash;",
+            user.id,
+            user.name,
+            user.email,
+            String::from(user.role),
+            user.password_hash
+        )
+        .fetch_one(executer)
+        .await
     }
 }
