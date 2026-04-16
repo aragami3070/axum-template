@@ -37,14 +37,13 @@ impl AuthRouter {
 )]
 pub struct AuthDocs;
 
-// TODO: вынести логику в services
 
 #[utoipa::path(
     post,
     path = "/registration",
     request_body = RegisterUser,
     responses(
-        (status = 200, description = "Пользователь зарегестрирован", body = Tokens),
+        (status = 200, description = "Пользователь зарегистрирован", body = Tokens),
         (status = 409, description = "Пользователь с такой почтой уже существует", body = String),
         (status = 500, description = "Технические шокаладки с бд", body = String)
     )
