@@ -48,6 +48,7 @@ pub struct UserDocs;
 
 #[utoipa::path(
     get,
+    tag = "user",
     // NOTE: обязательно надо добавить, чтобы с свагера на эту ручку отправлялся токен
     security(
         ("bearer_auth" = [])
@@ -73,6 +74,7 @@ pub async fn my_profile(
 
 #[utoipa::path(
     post,
+    tag = "user",
     security(
         ("bearer_auth" = [])
     ),

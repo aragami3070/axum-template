@@ -9,7 +9,7 @@ use utoipa::OpenApi;
 
 use crate::{
     AppState,
-    errors::auth::AuthError,
+    errors::{auth::AuthError, users::UserError},
     models::tokens::Tokens,
     repositories::{is_unique_violation, users::UserRepository},
     schemas::{
@@ -37,10 +37,10 @@ impl AuthRouter {
 )]
 pub struct AuthDocs;
 
-
 #[utoipa::path(
     post,
     path = "/registration",
+    tag = "auth",
     request_body = RegisterUser,
     responses(
         (status = 200, description = "Пользователь зарегистрирован", body = Tokens),
@@ -63,7 +63,9 @@ pub async fn register(
             StatusCode::OK,
             Json(token_serv.generate_tokens(&user).await?),
         )),
-        Err(e) if is_unique_violation(&e) => Err(AuthError::UserAlreadyExists),
+        Err(e) if is_unique_violation(&e) => {
+            Err(AuthError::UserError(UserError::UserAlreadyExists))
+        }
         Err(e) => Err(AuthError::Db(e)),
     }
 }
@@ -71,6 +73,7 @@ pub async fn register(
 #[utoipa::path(
     post,
     path = "/login",
+    tag = "auth",
     request_body = LoginUser,
     responses(
         (status = 200, description = "Вход успешен", body = Tokens),
@@ -100,6 +103,7 @@ pub async fn login(
 #[utoipa::path(
     put,
     path = "/refresh_tokens",
+    tag = "auth",
     params (
         ("old_refresh_token" = RefreshToken, Query, description = "Старый refresh token")
     ),
