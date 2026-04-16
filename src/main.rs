@@ -23,6 +23,7 @@ use config::*;
 
 use crate::handlers::auth::AuthDocs;
 use crate::handlers::auth::AuthRouter;
+use crate::handlers::users::{UserDocs, UserRouter};
 use crate::middlewares::auth::auth_middleware;
 use crate::middlewares::role::role_middleware;
 use crate::models::users::Role;
@@ -60,11 +61,13 @@ async fn main() {
         config.secret_key.to_owned(),
         config.secret_refresh_key.to_owned(),
     );
-
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
 
+
+    // NOTE: сюда добавляем доки для swagger-а
     let mut open_api = ApiDoc::openapi()
         .nest("/auth", AuthDocs::openapi())
+        .nest("/user", UserDocs::openapi())
         .nest("/aboba", AbobaDocs::openapi());
 
     // NOTE: добавляет подстановку токена в запрос
@@ -80,14 +83,16 @@ async fn main() {
                     .build(),
             ),
         );
-
     let swagger_router = SwaggerUi::new("/docs").url("/api-docs/openapi.json", open_api);
 
+
+    let user_router = UserRouter::set_router(state.clone());
     let auth_router = AuthRouter::set_router();
+
     let protect_aboba_router = Router::new()
         .route("/aboba/aboba", get(aboba))
         .route_layer(from_fn(move |req, next| async move {
-            role_middleware(req, next, Role::admin_only()).await
+            role_middleware(req, next, Role::all()).await
         }))
         .route_layer({
             let token_serv = state.token_serv.clone();
@@ -100,6 +105,7 @@ async fn main() {
     let app = Router::new()
         .merge(protect_aboba_router)
         .nest("/auth", auth_router)
+        .nest("/user", user_router)
         .merge(swagger_router)
         .with_state(state)
         .layer(
