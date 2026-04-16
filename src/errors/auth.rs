@@ -2,7 +2,7 @@ use axum::response::IntoResponse;
 use http::StatusCode;
 use thiserror::Error;
 
-use crate::errors::tokens;
+use crate::errors::{tokens, users};
 
 #[derive(Error, Debug)]
 pub enum AuthError {
@@ -12,8 +12,8 @@ pub enum AuthError {
     #[error("Token service error: {0}")]
     TokenError(#[from] tokens::TokenError),
 
-    #[error("User already exists")]
-    UserAlreadyExists,
+    #[error("Token service error: {0}")]
+    UserError(#[from] users::UserError),
 
     #[error("User not found")]
     Unauthorized,
@@ -27,9 +27,7 @@ impl IntoResponse for AuthError {
         match self {
             Self::Db(er) => (StatusCode::INTERNAL_SERVER_ERROR, er.to_string()).into_response(),
             Self::TokenError(er) => er.into_response(),
-            Self::UserAlreadyExists => {
-                (StatusCode::CONFLICT, "User already exists".to_string()).into_response()
-            }
+            Self::UserError(er) => er.into_response(),
             Self::Unauthorized => {
                 (StatusCode::UNAUTHORIZED, "User unauthorized".to_string()).into_response()
             }
