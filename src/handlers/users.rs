@@ -74,6 +74,7 @@ pub async fn my_profile(
         ("bearer_auth" = [])
     ),
     path = "/create_admin",
+    request_body = RegisterUser,
     responses(
         (status = 200, description = "Админ создан", body = UserResponse),
         (status = 409, description = "Пользователь с такой почтой уже существует", body = String),
