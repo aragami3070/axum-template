@@ -59,9 +59,9 @@ pub struct UserDocs;
     ),
     path = "/my_profile",
     responses(
-        (status = 200, description = "Пользователь зарегистрирован", body = UserResponse),
-        (status = 404, description = "Пользователь не найден", body = String),
-        (status = 500, description = "Технические шокаладки с бд", body = String)
+        (status = 200, description = "User retrieved successfully", body = UserResponse),
+        (status = 404, description = "User not found", body = String),
+        (status = 500, description = "Internal database error", body = String)
     )
 )]
 pub async fn my_profile(
@@ -85,9 +85,9 @@ pub async fn my_profile(
     path = "/create_admin",
     request_body = RegisterUser,
     responses(
-        (status = 200, description = "Админ создан", body = UserResponse),
-        (status = 409, description = "Пользователь с такой почтой уже существует", body = String),
-        (status = 500, description = "Технические шокаладки с бд", body = String)
+        (status = 200, description = "Admin created successfully", body = UserResponse),
+        (status = 409, description = "User with this email already exists", body = String),
+        (status = 500, description = "Internal database error", body = String)
     )
 )]
 pub async fn create_admin(
@@ -115,9 +115,9 @@ pub async fn create_admin(
     path = "",
     request_body = RegisterUser,
     responses(
-        (status = 204, description = "Данные обновленны"),
-        (status = 404, description = "Пользователь не найден", body = String),
-        (status = 500, description = "Технические шокаладки с бд", body = String)
+        (status = 204, description = "Data updated"),
+        (status = 404, description = "User not found", body = String),
+        (status = 500, description = "Internal database error", body = String)
     )
 )]
 /// NOTE: user меняет инфу о себе (кроме id и роли)
@@ -152,13 +152,13 @@ pub async fn update(
     ),
     path = "/{offset}/{page_limit}",
     params(
-        ("offset" = u64, Path, description = "Смещение (offset)"),
-        ("page_limit" = u64, Path, description = "Лимит записей")
+        ("offset" = u64, Path, description = "Offset"),
+        ("page_limit" = u64, Path, description = "Record limit")
     ),
     responses(
-        (status = 200, description = "Пользователи найдены", body = Vec<UserResponse>),
-        (status = 204, description = "Пользователей нет в данном диапазоне"),
-        (status = 500, description = "Технические шокаладки с бд", body = String)
+        (status = 200, description = "Users found", body = Vec<UserResponse>),
+        (status = 204, description = "No users in this range"),
+        (status = 500, description = "Internal database error", body = String)
     )
 )]
 pub async fn get_with_pagination(

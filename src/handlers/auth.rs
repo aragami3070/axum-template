@@ -43,9 +43,9 @@ pub struct AuthDocs;
     tag = "auth",
     request_body = RegisterUser,
     responses(
-        (status = 200, description = "Пользователь зарегистрирован", body = Tokens),
-        (status = 409, description = "Пользователь с такой почтой уже существует", body = String),
-        (status = 500, description = "Технические шокаладки с бд", body = String)
+        (status = 200, description = "User registered successfully", body = Tokens),
+        (status = 409, description = "User with this email already exists", body = String),
+        (status = 500, description = "Internal database error", body = String)
     )
 )]
 pub async fn register(
@@ -76,9 +76,9 @@ pub async fn register(
     tag = "auth",
     request_body = LoginUser,
     responses(
-        (status = 200, description = "Вход успешен", body = Tokens),
-        (status = 401, description = "Не верная почта или пароль", body = String),
-        (status = 500, description = "Технические шокаладки с бд", body = String)
+        (status = 200, description = "Login successful", body = Tokens),
+        (status = 401, description = "Invalid email or password", body = String),
+        (status = 500, description = "Internal database error", body = String)
     )
 )]
 pub async fn login(
@@ -105,12 +105,12 @@ pub async fn login(
     path = "/refresh_tokens",
     tag = "auth",
     params (
-        ("old_refresh_token" = RefreshToken, Query, description = "Старый refresh token")
+        ("old_refresh_token" = RefreshToken, Query, description = "Old refresh token")
     ),
     responses(
-        (status = 200, description = "Токены обновлены", body = Tokens),
-        (status = 401, description = "Токен не валидный или протух", body = String),
-        (status = 500, description = "Технические шокаладки с бд", body = String)
+        (status = 200, description = "Tokens refreshed successfully", body = Tokens),
+        (status = 401, description = "Token is invalid or expired", body = String),
+        (status = 500, description = "Internal database error", body = String)
     )
 )]
 pub async fn refresh_tokens(
