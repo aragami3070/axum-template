@@ -1,4 +1,5 @@
 mod config;
+mod traicing;
 mod errors;
 mod handlers;
 mod middlewares;
@@ -17,11 +18,12 @@ use tower_http::cors::{Any, CorsLayer};
 
 use config::*;
 
-use crate::routes::{get_all_routes, get_swagger_routes};
+use crate::{routes::{get_all_routes, get_swagger_routes}, traicing::init_tracing};
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    init_tracing();
 
     let config = Config::from_env();
     let db_pool = Arc::new(get_db_pool(&config.database_url).await);
