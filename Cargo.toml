@@ -24,5 +24,7 @@ dotenv = "0.15.0"
 utoipa = { version="5.4.0", features=["uuid"] }
 utoipa-swagger-ui = { version="9.0.2", features = ["axum"] }
 enum-iterator = "2.3.0"
+tracing = "0.1.44"
+tracing-subscriber = {version = "0.3.23", features = ["env-filter"]}
 
 macroses = { path = "macroses" }
