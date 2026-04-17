@@ -1,3 +1,4 @@
+use axum::{Router, middleware::from_fn, response::IntoResponse, routing::get};
 use utoipa::{
     OpenApi,
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
@@ -9,8 +10,11 @@ use utoipa_swagger_ui::SwaggerUi;
 struct ApiDoc;
 
 use crate::{
-    AbobaDocs,
-    handlers::{auth::AuthDocs, users::UserDocs},
+    config::AppState,
+    handlers::{
+        auth::{AuthDocs, AuthRouter},
+        users::{UserDocs, UserRouter},
+    }, middlewares::{auth::auth_middleware, role::role_middleware}, models::users::Role,
 };
 
 pub fn get_swagger_routes() -> SwaggerUi {
@@ -34,4 +38,51 @@ pub fn get_swagger_routes() -> SwaggerUi {
             ),
         );
     SwaggerUi::new("/docs").url("/api-docs/openapi.json", open_api)
+}
+
+pub fn get_all_routes(state: AppState) -> Router<AppState> {
+    // NOTE: здесь создаете свои router-ы
+    let user_router = UserRouter::set_router(state.clone());
+    let auth_router = AuthRouter::set_router();
+
+    let protect_aboba_router = Router::new()
+        .route("/abobus", get(aboba))
+        .route_layer(from_fn(move |req, next| async move {
+            role_middleware(req, next, Role::all()).await
+        }))
+        .route_layer({
+            let token_serv = state.token_serv.clone();
+            from_fn(move |req, next| {
+                let token_serv = token_serv.clone();
+                async move { auth_middleware(req, next, token_serv.clone()).await }
+            })
+        });
+
+    // NOTE: здесь добавлять в ко всем router-ам
+    Router::new()
+        .nest("/aboba", protect_aboba_router)
+        .nest("/auth", auth_router)
+        .nest("/user", user_router)
+}
+
+
+
+
+#[derive(OpenApi)]
+#[openapi(paths(aboba))]
+pub struct AbobaDocs;
+#[utoipa::path(
+    get,
+    path = "/abobus",
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "aboba",
+    responses(
+        (status = 200, description = "Aboba", body = String),
+        (status = 500, description = "Технические шокаладки", body = String)
+    )
+)]
+async fn aboba() -> impl IntoResponse {
+    "aboba".to_string()
 }
