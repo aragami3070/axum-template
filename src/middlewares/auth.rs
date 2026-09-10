@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use axum::{extract::Request, middleware::Next, response::Response};
-use sqlx::Postgres;
 
 use crate::{
     errors::{auth::AuthError, tokens::TokenError},
@@ -11,7 +10,7 @@ use crate::{
 pub async fn auth_middleware(
     mut req: Request,
     next: Next,
-    token_serv: Arc<TokenService<Postgres>>,
+    token_serv: Arc<TokenService>,
 ) -> Result<Response, AuthError> {
     let auth_header = req
         .headers()
@@ -37,4 +36,3 @@ pub async fn auth_middleware(
 
     Ok(next.run(req).await)
 }
-

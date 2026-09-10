@@ -1,52 +1,45 @@
-use sqlx::{Executor, Pool, Postgres, postgres::PgQueryResult};
-use std::sync::Arc;
+use sqlx::{Executor, Postgres, postgres::PgQueryResult};
 use uuid::Uuid;
 
 use crate::services::auth::hashing::hash;
 
 pub trait TokenRepository {
-    async fn get(&self, user_id: &Uuid) -> sqlx::Result<Option<String>>;
+    async fn get<'e, E>(&self, executor: E, user_id: &Uuid) -> sqlx::Result<Option<String>>
+    where
+        E: Executor<'e, Database = Postgres>;
     async fn create<'e, E>(
         &self,
-        executer: E,
-        refreh_token_info: (&Uuid, &str),
+        executor: E,
+        refresh_token_info: (&Uuid, &str),
     ) -> sqlx::Result<PgQueryResult>
     where
-        E: Executor<'e, Database = sqlx::Postgres>;
+        E: Executor<'e, Database = Postgres>;
 }
 
-#[derive(Clone)]
-pub struct TokenRepo<Db>
-where
-    Db: sqlx::Database,
-{
-    pub db_pool: Arc<Pool<Db>>,
-}
+#[derive(Clone, Default)]
+pub struct TokenRepo;
 
-impl<Db: sqlx::Database> TokenRepo<Db> {
-    pub fn new(db_pool: Arc<Pool<Db>>) -> Self {
-        Self { db_pool }
-    }
-}
-
-impl TokenRepository for TokenRepo<Postgres> {
-    async fn get(&self, user_id: &Uuid) -> sqlx::Result<Option<String>> {
+impl TokenRepository for TokenRepo {
+    async fn get<'e, E>(&self, executor: E, user_id: &Uuid) -> sqlx::Result<Option<String>>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_scalar!(
             "SELECT token FROM refresh_tokens
             WHERE user_id = $1",
             user_id
         )
-        .fetch_optional(self.db_pool.clone().as_ref())
+        .fetch_optional(executor)
         .await
     }
 
     async fn create<'e, E>(
         &self,
-        executer: E,
+        executor: E,
         refresh_token_info: (&Uuid, &str),
     ) -> sqlx::Result<PgQueryResult>
     where
-        E: Executor<'e, Database = sqlx::Postgres>,
+        E: Executor<'e, Database = Postgres>,
     {
         sqlx::query!(
             "INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)
@@ -54,7 +47,7 @@ impl TokenRepository for TokenRepo<Postgres> {
             refresh_token_info.0,
             hash(refresh_token_info.1)
         )
-        .execute(executer)
+        .execute(executor)
         .await
     }
 }

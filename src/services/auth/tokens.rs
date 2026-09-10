@@ -8,7 +8,7 @@ use crate::services::auth::hashing::hash;
 use crate::{errors::tokens::TokenError, models::tokens::Tokens};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
-use sqlx::{Database, Postgres};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 type Result<T> = std::result::Result<T, TokenError>;
@@ -21,23 +21,23 @@ pub struct Claims {
     pub jti: Option<String>,
 }
 
-pub struct TokenService<Db: Database> {
+pub struct TokenService {
     secret: Arc<String>,
     secret_refresh: Arc<String>,
     access_duration: usize,
     refresh_duration: usize,
-    token_repo: Arc<TokenRepo<Db>>,
-    user_repo: Arc<UserRepo<Postgres>>,
+    token_repo: Arc<TokenRepo>,
+    user_repo: Arc<UserRepo>,
 }
 
-impl TokenService<Postgres> {
+impl TokenService {
     /// Creates a new [`TokenService`].
     pub fn new(
         secret: Arc<String>,
         secret_refresh: Arc<String>,
         access_duration: usize,
-        token_repo: Arc<TokenRepo<Postgres>>,
-        user_repo: Arc<UserRepo<Postgres>>,
+        token_repo: Arc<TokenRepo>,
+        user_repo: Arc<UserRepo>,
         refresh_duration: usize,
     ) -> Self {
         Self {
@@ -50,28 +50,39 @@ impl TokenService<Postgres> {
         }
     }
 
-    pub async fn refresh_tokens(&self, old_refresh_token: String) -> Result<Tokens> {
-        let cur_claims = self.validate_refresh_token(&old_refresh_token).await?;
+    pub async fn refresh_tokens(
+        &self,
+        executor: &mut PgConnection,
+        old_refresh_token: String,
+    ) -> Result<Tokens> {
+        let cur_claims = self
+            .validate_refresh_token(&mut *executor, &old_refresh_token)
+            .await?;
 
         // NOTE: если пользователь не найден, значит токен не валидный
-        let user = match self.user_repo.get_by_id(&cur_claims.sub).await? {
+        let user = match self
+            .user_repo
+            .get_by_id(&mut *executor, &cur_claims.sub)
+            .await?
+        {
             Some(u) => u,
             None => return Err(TokenError::InvalidToken),
         };
 
-        self.generate_tokens(&user).await
+        self.generate_tokens(executor, &user).await
     }
 
-    pub async fn generate_tokens(&self, user: &User) -> Result<Tokens> {
+    pub async fn generate_tokens(
+        &self,
+        executor: &mut PgConnection,
+        user: &User,
+    ) -> Result<Tokens> {
         let access_token = self.generate_access_token(user)?;
         let refresh_token = self.generate_refresh_token(user)?;
 
         let _ = self
             .token_repo
-            .create(
-                self.token_repo.db_pool.clone().as_ref(),
-                (&user.id, &refresh_token),
-            )
+            .create(&mut *executor, (&user.id, &refresh_token))
             .await?;
 
         Ok(Tokens {
@@ -136,7 +147,11 @@ impl TokenService<Postgres> {
         Ok(token_data.claims)
     }
 
-    async fn validate_refresh_token(&self, token: &str) -> Result<Claims> {
+    async fn validate_refresh_token(
+        &self,
+        executor: &mut PgConnection,
+        token: &str,
+    ) -> Result<Claims> {
         let decoding_key = DecodingKey::from_secret(self.secret_refresh.as_bytes());
         let mut validation = Validation::new(Algorithm::HS256);
 
@@ -151,7 +166,11 @@ impl TokenService<Postgres> {
             Err(e) => return Err(TokenError::Jwt(e)),
         };
 
-        let is_valid_token = match self.token_repo.get(&token_data.claims.sub).await? {
+        let is_valid_token = match self
+            .token_repo
+            .get(&mut *executor, &token_data.claims.sub)
+            .await?
+        {
             Some(old_token) => old_token == hash(token),
             None => return Err(TokenError::RefreshNotFound),
         };

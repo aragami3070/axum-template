@@ -52,22 +52,20 @@ pub async fn register(
     State(state): State<AppState>,
     Json(user_data): Json<RegisterUser>,
 ) -> Result<impl IntoResponse, AuthError> {
-    let repo = state.user_repo.clone();
-    let token_serv = state.token_serv.clone();
+    let mut tx = state.begin_transaction().await?;
 
-    match repo
-        .create(repo.db_pool.clone().as_ref(), user_data.clone())
-        .await
-    {
-        Ok(user) => Ok((
-            StatusCode::OK,
-            Json(token_serv.generate_tokens(&user).await?),
-        )),
+    let user = match state.user_repo.create(&mut *tx, user_data).await {
+        Ok(user) => user,
         Err(e) if is_unique_violation(&e) => {
-            Err(AuthError::UserError(UserError::UserAlreadyExists))
+            return Err(AuthError::UserError(UserError::UserAlreadyExists));
         }
-        Err(e) => Err(AuthError::Db(e)),
-    }
+        Err(e) => return Err(AuthError::Db(e)),
+    };
+
+    let tokens = state.token_serv.generate_tokens(&mut tx, &user).await?;
+    tx.commit().await?;
+
+    Ok((StatusCode::OK, Json(tokens)))
 }
 
 #[utoipa::path(
@@ -85,19 +83,21 @@ pub async fn login(
     State(state): State<AppState>,
     Json(user_data): Json<LoginUser>,
 ) -> Result<impl IntoResponse, AuthError> {
-    let repo = state.user_repo.clone();
-    let token_serv = state.token_serv.clone();
+    let mut tx = state.begin_transaction().await?;
 
-    match repo
-        .check_login(&user_data.email, &hash(&user_data.password))
+    let user = match state
+        .user_repo
+        .check_login(&mut *tx, &user_data.email, &hash(&user_data.password))
         .await?
     {
-        Some(user) => Ok((
-            StatusCode::OK,
-            Json(token_serv.generate_tokens(&user).await?),
-        )),
-        None => Err(AuthError::Unauthorized),
-    }
+        Some(user) => user,
+        None => return Err(AuthError::Unauthorized),
+    };
+
+    let tokens = state.token_serv.generate_tokens(&mut tx, &user).await?;
+    tx.commit().await?;
+
+    Ok((StatusCode::OK, Json(tokens)))
 }
 
 #[utoipa::path(
@@ -117,10 +117,13 @@ pub async fn refresh_tokens(
     State(state): State<AppState>,
     Query(old_refresh_token): Query<RefreshToken>,
 ) -> Result<impl IntoResponse, AuthError> {
-    let token_serv = state.token_serv.clone();
+    let mut tx = state.begin_transaction().await?;
 
-    Ok((
-        StatusCode::OK,
-        Json(token_serv.refresh_tokens(old_refresh_token.token).await?),
-    ))
+    let tokens = state
+        .token_serv
+        .refresh_tokens(&mut tx, old_refresh_token.token)
+        .await?;
+    tx.commit().await?;
+
+    Ok((StatusCode::OK, Json(tokens)))
 }

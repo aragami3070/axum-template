@@ -1,7 +1,7 @@
 use macroses::NewTypeDeref;
 use serde::Deserialize;
-use sqlx::{Executor, Pool, Postgres, postgres::PgQueryResult};
-use std::{ops::Deref, sync::Arc};
+use sqlx::{Executor, Postgres, postgres::PgQueryResult};
+use std::ops::Deref;
 use uuid::Uuid;
 
 use crate::{
@@ -15,36 +15,52 @@ pub struct Limit(pub u64);
 pub struct Offset(pub u64);
 
 pub trait UserRepository {
-    async fn get(&self, offset: &Offset, limit: &Limit) -> sqlx::Result<Vec<User>>;
-    async fn get_by_id(&self, id: &Uuid) -> sqlx::Result<Option<User>>;
-    async fn get_by_email(&self, email: &str) -> sqlx::Result<Option<User>>;
-    async fn check_login(&self, email: &str, password_hash: &str) -> sqlx::Result<Option<User>>;
-    async fn create_admin<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<User>
+    async fn get<'e, E>(
+        &self,
+        executor: E,
+        offset: &Offset,
+        limit: &Limit,
+    ) -> sqlx::Result<Vec<User>>
     where
-        E: Executor<'e, Database = sqlx::Postgres>;
-    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<User>
+        E: Executor<'e, Database = Postgres>;
+    async fn get_by_id<'e, E>(&self, executor: E, id: &Uuid) -> sqlx::Result<Option<User>>
     where
-        E: Executor<'e, Database = sqlx::Postgres>;
-    async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<PgQueryResult>
+        E: Executor<'e, Database = Postgres>;
+    async fn get_by_email<'e, E>(&self, executor: E, email: &str) -> sqlx::Result<Option<User>>
     where
-        E: Executor<'e, Database = sqlx::Postgres>;
+        E: Executor<'e, Database = Postgres>;
+    async fn check_login<'e, E>(
+        &self,
+        executor: E,
+        email: &str,
+        password_hash: &str,
+    ) -> sqlx::Result<Option<User>>
+    where
+        E: Executor<'e, Database = Postgres>;
+    async fn create_admin<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
+    where
+        E: Executor<'e, Database = Postgres>;
+    async fn create<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
+    where
+        E: Executor<'e, Database = Postgres>;
+    async fn update<'e, E>(&self, executor: E, user: User) -> sqlx::Result<PgQueryResult>
+    where
+        E: Executor<'e, Database = Postgres>;
 }
 
-#[derive(Clone)]
-pub struct UserRepo<Db> where
-    Db: sqlx::Database,
-{
-    pub db_pool: Arc<Pool<Db>>,
-}
+#[derive(Clone, Default)]
+pub struct UserRepo;
 
-impl<Db: sqlx::Database> UserRepo<Db> {
-    pub fn new(db_pool: Arc<Pool<Db>>) -> Self {
-        Self { db_pool }
-    }
-}
-
-impl UserRepository for UserRepo<Postgres> {
-    async fn get(&self, offset: &Offset, limit: &Limit) -> sqlx::Result<Vec<User>> {
+impl UserRepository for UserRepo {
+    async fn get<'e, E>(
+        &self,
+        executor: E,
+        offset: &Offset,
+        limit: &Limit,
+    ) -> sqlx::Result<Vec<User>>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as!(
             User,
             "SELECT id, name, email, role AS \"role: Role\", password_hash
@@ -53,33 +69,49 @@ impl UserRepository for UserRepo<Postgres> {
             *limit.deref() as i64,
             *offset.deref() as i64
         )
-        .fetch_all(self.db_pool.as_ref())
+        .fetch_all(executor)
         .await
     }
 
-    async fn get_by_id(&self, id: &Uuid) -> sqlx::Result<Option<User>> {
+    async fn get_by_id<'e, E>(&self, executor: E, id: &Uuid) -> sqlx::Result<Option<User>>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as!(
             User,
-            "SELECT  id, name, email, role AS \"role: Role\", password_hash
+            "SELECT id, name, email, role AS \"role: Role\", password_hash
             FROM users
             WHERE id = $1",
             id
         )
-        .fetch_optional(self.db_pool.as_ref())
+        .fetch_optional(executor)
         .await
     }
 
-    async fn get_by_email(&self, email: &str) -> sqlx::Result<Option<User>> {
+    async fn get_by_email<'e, E>(&self, executor: E, email: &str) -> sqlx::Result<Option<User>>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as!(
             User,
-            "SELECT  id, name, email, role AS \"role: Role\", password_hash FROM users WHERE email = $1",
+            "SELECT  id, name, email, role AS \"role: Role\", password_hash
+            FROM users
+            WHERE email = $1",
             email
         )
-        .fetch_optional(self.db_pool.as_ref())
+        .fetch_optional(executor)
         .await
     }
 
-    async fn check_login(&self, email: &str, password_hash: &str) -> sqlx::Result<Option<User>> {
+    async fn check_login<'e, E>(
+        &self,
+        executor: E,
+        email: &str,
+        password_hash: &str,
+    ) -> sqlx::Result<Option<User>>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as!(
             User,
             "SELECT  id, name, email, role AS \"role: Role\", password_hash
@@ -88,13 +120,13 @@ impl UserRepository for UserRepo<Postgres> {
             email,
             password_hash
         )
-        .fetch_optional(self.db_pool.as_ref())
+        .fetch_optional(executor)
         .await
     }
 
-    async fn create_admin<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<User>
+    async fn create_admin<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
     where
-        E: Executor<'e, Database = sqlx::Postgres>,
+        E: Executor<'e, Database = Postgres>,
     {
         let mut user_data: User = user.into();
         user_data.role = crate::models::users::Role::Admin;
@@ -109,13 +141,13 @@ impl UserRepository for UserRepo<Postgres> {
             String::from(user_data.role),
             user_data.password_hash
         )
-        .fetch_one(executer)
+        .fetch_one(executor)
         .await
     }
 
-    async fn create<'e, E>(&self, executer: E, user: RegisterUser) -> sqlx::Result<User>
+    async fn create<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
     where
-        E: Executor<'e, Database = sqlx::Postgres>,
+        E: Executor<'e, Database = Postgres>,
     {
         let user_data: User = user.into();
         sqlx::query_as!(
@@ -129,13 +161,13 @@ impl UserRepository for UserRepo<Postgres> {
             String::from(user_data.role),
             user_data.password_hash
         )
-        .fetch_one(executer)
+        .fetch_one(executor)
         .await
     }
 
-    async fn update<'e, E>(&self, executer: E, user: User) -> sqlx::Result<PgQueryResult>
+    async fn update<'e, E>(&self, executor: E, user: User) -> sqlx::Result<PgQueryResult>
     where
-        E: Executor<'e, Database = sqlx::Postgres>,
+        E: Executor<'e, Database = Postgres>,
     {
         sqlx::query!(
             "UPDATE users
@@ -147,7 +179,7 @@ impl UserRepository for UserRepo<Postgres> {
             String::from(user.role),
             user.password_hash
         )
-        .execute(executer)
+        .execute(executor)
         .await
     }
 }

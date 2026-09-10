@@ -68,9 +68,12 @@ pub async fn my_profile(
     Extension(claims): Extension<Claims>,
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, UserError> {
-    let repo = state.user_repo.clone();
     // NOTE: пример получения id пользователя из claims
-    match repo.get_by_id(&claims.sub).await? {
+    match state
+        .user_repo
+        .get_by_id(&state.db_pool, &claims.sub)
+        .await?
+    {
         Some(user) => Ok((StatusCode::OK, Json(UserResponse::from(user)))),
         None => Err(UserError::NotFound),
     }
@@ -94,16 +97,17 @@ pub async fn create_admin(
     State(state): State<AppState>,
     Json(user_data): Json<RegisterUser>,
 ) -> Result<impl IntoResponse, UserError> {
-    let repo = state.user_repo.clone();
+    let mut tx = state.begin_transaction().await?;
 
-    match repo
-        .create_admin(repo.db_pool.clone().as_ref(), user_data)
-        .await
-    {
-        Ok(admin) => Ok((StatusCode::OK, Json(UserResponse::from(admin)))),
-        Err(e) if is_unique_violation(&e) => Err(UserError::UserAlreadyExists),
-        Err(e) => Err(UserError::Db(e)),
-    }
+    let admin = match state.user_repo.create_admin(&mut *tx, user_data).await {
+        Ok(admin) => admin,
+        Err(e) if is_unique_violation(&e) => return Err(UserError::UserAlreadyExists),
+        Err(e) => return Err(UserError::Db(e)),
+    };
+
+    tx.commit().await?;
+
+    Ok((StatusCode::OK, Json(UserResponse::from(admin))))
 }
 
 #[utoipa::path(
@@ -126,19 +130,22 @@ pub async fn update(
     State(state): State<AppState>,
     Json(user_data): Json<RegisterUser>,
 ) -> Result<impl IntoResponse, UserError> {
-    let repo = state.user_repo.clone();
+    let mut tx = state.begin_transaction().await?;
     let mut user = User::from(user_data);
     user.id = claims.sub;
     user.role = claims.role.try_into()?;
 
-    if repo
-        .update(repo.db_pool.clone().as_ref(), user)
+    if state
+        .user_repo
+        .update(&mut *tx, user)
         .await?
         .rows_affected()
         == 0
     {
         return Err(UserError::NotFound);
     }
+
+    tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -166,9 +173,9 @@ pub async fn get_with_pagination(
     State(state): State<AppState>,
     // NOTE: с путем /{offset}/aboba/{page_limit} будет работать аналогчино
 ) -> Result<impl IntoResponse, UserError> {
-    let repo = state.user_repo.clone();
-    let users_vec = repo
-        .get(&offset, &page_limit)
+    let users_vec = state
+        .user_repo
+        .get(&state.db_pool, &offset, &page_limit)
         .await?
         .into_iter()
         .map(UserResponse::from)

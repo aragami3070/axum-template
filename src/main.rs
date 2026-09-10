@@ -13,7 +13,6 @@ use axum::Router;
 use dotenv::dotenv;
 use http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 
 use config::*;
@@ -26,7 +25,7 @@ async fn main() {
     init_tracing();
 
     let config = Config::from_env();
-    let db_pool = Arc::new(get_db_pool(&config.database_url).await);
+    let db_pool = get_db_pool(&config.database_url).await;
     let state = AppState::new(
         db_pool,
         config.secret_key.to_owned(),
@@ -49,8 +48,8 @@ async fn main() {
                 .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT]),
         );
 
-    println!("Listening on http://{}", &addr);
-    println!("Swagger on http://{}/docs", &addr);
+    println!("Listening on http://{}", addr);
+    println!("Swagger on http://{}/docs", addr);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app.into_make_service())
         .await
