@@ -30,7 +30,7 @@ pub fn new_type_deref(input: TokenStream) -> TokenStream {
     };
 
     let gen_deref = quote! {
-        impl Deref for #name {
+        impl std::ops::Deref for #name {
             type Target = #target_type;
             fn deref(&self) -> &Self::Target{
                 &self.0
