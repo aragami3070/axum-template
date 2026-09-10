@@ -11,7 +11,7 @@ use crate::{
     AppState,
     errors::{auth::AuthError, users::UserError},
     models::tokens::Tokens,
-    repositories::is_unique_violation,
+    repositories::{is_unique_violation, users::UserRepo},
     schemas::{
         tokens::RefreshToken,
         users::{LoginUser, RegisterUser},
@@ -54,7 +54,7 @@ pub async fn register(
 ) -> Result<impl IntoResponse, AuthError> {
     let mut tx = state.begin_transaction().await?;
 
-    let user = match state.user_repo.create(&mut *tx, user_data).await {
+    let user = match UserRepo.create(&mut *tx, user_data).await {
         Ok(user) => user,
         Err(e) if is_unique_violation(&e) => {
             return Err(AuthError::UserError(UserError::UserAlreadyExists));
@@ -85,8 +85,7 @@ pub async fn login(
 ) -> Result<impl IntoResponse, AuthError> {
     let mut tx = state.begin_transaction().await?;
 
-    let user = match state
-        .user_repo
+    let user = match UserRepo
         .check_login(&mut *tx, &user_data.email, &hash(&user_data.password))
         .await?
     {

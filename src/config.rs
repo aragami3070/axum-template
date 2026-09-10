@@ -31,9 +31,6 @@ pub async fn get_db_pool(database_url: &str) -> PgPool {
 pub struct AppState {
     pub db_pool: PgPool,
 
-    // NOTE: Репозитории
-    pub user_repo: Arc<UserRepo>,
-
     // NOTE: Сервисы
     pub token_serv: Arc<TokenService>,
 }
@@ -60,7 +57,6 @@ impl AppState {
         Self {
             db_pool,
             token_serv,
-            user_repo,
         }
     }
 

@@ -17,6 +17,11 @@ pub struct LoginUser {
     pub password: String,
 }
 
+#[derive(Deserialize)]
+pub struct EmailQuery {
+    pub email: String,
+}
+
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct UserResponse {
     pub id: Uuid,

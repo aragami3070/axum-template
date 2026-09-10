@@ -1,6 +1,6 @@
 use axum::{
     Extension, Json, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     middleware::from_fn,
     response::IntoResponse,
@@ -15,9 +15,9 @@ use crate::{
     models::users::{Role, User},
     repositories::{
         is_unique_violation,
-        users::{Limit, Offset},
+        users::{Limit, Offset, UserRepo},
     },
-    schemas::users::{RegisterUser, UserResponse},
+    schemas::users::{EmailQuery, RegisterUser, UserResponse},
     services::auth::tokens::Claims,
 };
 
@@ -27,6 +27,7 @@ impl UserRouter {
     pub fn set_router(state: AppState) -> Router<AppState> {
         Router::new()
             .route("/my_profile", get(my_profile))
+            .route("/by_email", get(get_by_email))
             .route("/create_admin", post(create_admin))
             .route("/", put(update))
             .route("/{offset}/{page_limit}", get(get_with_pagination))
@@ -45,7 +46,7 @@ impl UserRouter {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(my_profile, create_admin, update, get_with_pagination),
+    paths(my_profile, get_by_email, create_admin, update, get_with_pagination),
     components(schemas(RegisterUser))
 )]
 pub struct UserDocs;
@@ -69,9 +70,34 @@ pub async fn my_profile(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, UserError> {
     // NOTE: пример получения id пользователя из claims
-    match state
-        .user_repo
-        .get_by_id(&state.db_pool, &claims.sub)
+    match UserRepo.get_by_id(&state.db_pool, &claims.sub).await? {
+        Some(user) => Ok((StatusCode::OK, Json(UserResponse::from(user)))),
+        None => Err(UserError::NotFound),
+    }
+}
+
+#[utoipa::path(
+    get,
+    tag = "user",
+    security(
+        ("bearer_auth" = [])
+    ),
+    path = "/by_email",
+    params(
+        ("email" = String, Query, description = "User email")
+    ),
+    responses(
+        (status = 200, description = "User retrieved successfully", body = UserResponse),
+        (status = 404, description = "User not found", body = String),
+        (status = 500, description = "Internal database error", body = String)
+    )
+)]
+pub async fn get_by_email(
+    Query(email_query): Query<EmailQuery>,
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, UserError> {
+    match UserRepo
+        .get_by_email(&state.db_pool, &email_query.email)
         .await?
     {
         Some(user) => Ok((StatusCode::OK, Json(UserResponse::from(user)))),
@@ -99,7 +125,7 @@ pub async fn create_admin(
 ) -> Result<impl IntoResponse, UserError> {
     let mut tx = state.begin_transaction().await?;
 
-    let admin = match state.user_repo.create_admin(&mut *tx, user_data).await {
+    let admin = match UserRepo.create_admin(&mut *tx, user_data).await {
         Ok(admin) => admin,
         Err(e) if is_unique_violation(&e) => return Err(UserError::UserAlreadyExists),
         Err(e) => return Err(UserError::Db(e)),
@@ -135,13 +161,7 @@ pub async fn update(
     user.id = claims.sub;
     user.role = claims.role.try_into()?;
 
-    if state
-        .user_repo
-        .update(&mut *tx, user)
-        .await?
-        .rows_affected()
-        == 0
-    {
+    if UserRepo.update(&mut *tx, user).await?.rows_affected() == 0 {
         return Err(UserError::NotFound);
     }
 
@@ -173,8 +193,7 @@ pub async fn get_with_pagination(
     State(state): State<AppState>,
     // NOTE: с путем /{offset}/aboba/{page_limit} будет работать аналогчино
 ) -> Result<impl IntoResponse, UserError> {
-    let users_vec = state
-        .user_repo
+    let users_vec = UserRepo
         .get(&state.db_pool, &offset, &page_limit)
         .await?
         .into_iter()
