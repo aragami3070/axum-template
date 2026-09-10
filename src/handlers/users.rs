@@ -129,7 +129,7 @@ pub async fn update(
     let repo = state.user_repo.clone();
     let mut user = User::from(user_data);
     user.id = claims.sub;
-    user.role = claims.role.into();
+    user.role = claims.role.try_into()?;
 
     if repo
         .update(repo.db_pool.clone().as_ref(), user)

@@ -2,7 +2,9 @@ use enum_iterator::{Sequence, all};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{schemas::users::RegisterUser, services::auth::hashing::hash};
+use crate::{
+    errors::users::UserError, schemas::users::RegisterUser, services::auth::hashing::hash,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
@@ -43,12 +45,13 @@ impl Role {
     }
 }
 
-impl From<String> for Role {
-    fn from(value: String) -> Self {
+impl TryFrom<String> for Role {
+    type Error = UserError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_str() {
-            "user" => Role::User,
-            "admin" => Role::Admin,
-            _ => panic!("Role must be admin or user"),
+            "user" => Ok(Role::User),
+            "admin" => Ok(Role::Admin),
+            _ => Err(UserError::InvalidRole),
         }
     }
 }

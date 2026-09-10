@@ -12,16 +12,19 @@ pub enum UserError {
 
     #[error("User already exists")]
     UserAlreadyExists,
+
+    #[error("User role")]
+    InvalidRole,
 }
 
 impl IntoResponse for UserError {
     fn into_response(self) -> axum::response::Response {
         match self {
-            Self::Db(er) => (StatusCode::INTERNAL_SERVER_ERROR, er.to_string()).into_response(),
-            Self::UserAlreadyExists => {
-                (StatusCode::CONFLICT, "User already exists".to_string()).into_response()
-            }
-            Self::NotFound => (StatusCode::NOT_FOUND, "User not found".to_string()).into_response(),
+            Self::Db(er) => (StatusCode::INTERNAL_SERVER_ERROR, er.to_string()),
+            Self::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists".to_string()),
+            Self::NotFound => (StatusCode::NOT_FOUND, "User not found".to_string()),
+            Self::InvalidRole => (StatusCode::UNPROCESSABLE_ENTITY, "Invalid role".to_string()),
         }
+        .into_response()
     }
 }

@@ -13,7 +13,7 @@ pub async fn role_middleware(
         None => return Err(AuthError::Unauthorized),
     };
 
-    if !allowed_roles.contains(&Role::from(claims.role)) {
+    if !allowed_roles.contains(&Role::try_from(claims.role)?) {
         return Err(AuthError::Forbidden);
     }
     Ok(next.run(req).await)

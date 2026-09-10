@@ -4,7 +4,10 @@ use sqlx::{Executor, Pool, Postgres, postgres::PgQueryResult};
 use std::{ops::Deref, sync::Arc};
 use uuid::Uuid;
 
-use crate::{models::users::User, schemas::users::RegisterUser};
+use crate::{
+    models::users::{Role, User},
+    schemas::users::RegisterUser,
+};
 
 #[derive(NewTypeDeref, Deserialize)]
 pub struct Limit(pub u64);
@@ -28,8 +31,7 @@ pub trait UserRepository {
 }
 
 #[derive(Clone)]
-pub struct UserRepo<Db>
-where
+pub struct UserRepo<Db> where
     Db: sqlx::Database,
 {
     pub db_pool: Arc<Pool<Db>>,
@@ -45,7 +47,7 @@ impl UserRepository for UserRepo<Postgres> {
     async fn get(&self, offset: &Offset, limit: &Limit) -> sqlx::Result<Vec<User>> {
         sqlx::query_as!(
             User,
-            "SELECT id, name, email, role, password_hash
+            "SELECT id, name, email, role AS \"role: Role\", password_hash
             FROM users
             LIMIT $1 OFFSET $2",
             *limit.deref() as i64,
@@ -58,7 +60,9 @@ impl UserRepository for UserRepo<Postgres> {
     async fn get_by_id(&self, id: &Uuid) -> sqlx::Result<Option<User>> {
         sqlx::query_as!(
             User,
-            "SELECT  id, name, email, role, password_hash FROM users WHERE id = $1",
+            "SELECT  id, name, email, role AS \"role: Role\", password_hash
+            FROM users
+            WHERE id = $1",
             id
         )
         .fetch_optional(self.db_pool.as_ref())
@@ -68,7 +72,7 @@ impl UserRepository for UserRepo<Postgres> {
     async fn get_by_email(&self, email: &str) -> sqlx::Result<Option<User>> {
         sqlx::query_as!(
             User,
-            "SELECT  id, name, email, role, password_hash FROM users WHERE email = $1",
+            "SELECT  id, name, email, role AS \"role: Role\", password_hash FROM users WHERE email = $1",
             email
         )
         .fetch_optional(self.db_pool.as_ref())
@@ -78,7 +82,7 @@ impl UserRepository for UserRepo<Postgres> {
     async fn check_login(&self, email: &str, password_hash: &str) -> sqlx::Result<Option<User>> {
         sqlx::query_as!(
             User,
-            "SELECT  id, name, email, role, password_hash
+            "SELECT  id, name, email, role AS \"role: Role\", password_hash
             FROM users
             WHERE email = $1 AND password_hash = $2",
             email,
@@ -98,7 +102,7 @@ impl UserRepository for UserRepo<Postgres> {
             User,
             "INSERT INTO users (id, name, email, role, password_hash)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, name, email, role, password_hash;",
+            RETURNING id, name, email, role AS \"role: Role\", password_hash;",
             user_data.id,
             user_data.name,
             user_data.email,
@@ -118,7 +122,7 @@ impl UserRepository for UserRepo<Postgres> {
             User,
             "INSERT INTO users (id, name, email, role, password_hash)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, name, email, role, password_hash;",
+            RETURNING id, name, email, role AS \"role: Role\", password_hash;",
             user_data.id,
             user_data.name,
             user_data.email,
