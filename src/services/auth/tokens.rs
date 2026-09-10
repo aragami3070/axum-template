@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::models::users::User;
-use crate::repositories::tokens::{TokenRepo, TokenRepository};
-use crate::repositories::users::{UserRepo, UserRepository};
+use crate::repositories::tokens::TokenRepo;
+use crate::repositories::users::UserRepo;
 use crate::services::auth::hashing::hash;
 use crate::{errors::tokens::TokenError, models::tokens::Tokens};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};

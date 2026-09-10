@@ -3,24 +3,11 @@ use uuid::Uuid;
 
 use crate::services::auth::hashing::hash;
 
-pub trait TokenRepository {
-    async fn get<'e, E>(&self, executor: E, user_id: &Uuid) -> sqlx::Result<Option<String>>
-    where
-        E: Executor<'e, Database = Postgres>;
-    async fn create<'e, E>(
-        &self,
-        executor: E,
-        refresh_token_info: (&Uuid, &str),
-    ) -> sqlx::Result<PgQueryResult>
-    where
-        E: Executor<'e, Database = Postgres>;
-}
-
 #[derive(Clone, Default)]
 pub struct TokenRepo;
 
-impl TokenRepository for TokenRepo {
-    async fn get<'e, E>(&self, executor: E, user_id: &Uuid) -> sqlx::Result<Option<String>>
+impl TokenRepo {
+    pub async fn get<'e, E>(&self, executor: E, user_id: &Uuid) -> sqlx::Result<Option<String>>
     where
         E: Executor<'e, Database = Postgres>,
     {
@@ -33,7 +20,7 @@ impl TokenRepository for TokenRepo {
         .await
     }
 
-    async fn create<'e, E>(
+    pub async fn create<'e, E>(
         &self,
         executor: E,
         refresh_token_info: (&Uuid, &str),

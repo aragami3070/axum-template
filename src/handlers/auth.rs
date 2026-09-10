@@ -11,7 +11,7 @@ use crate::{
     AppState,
     errors::{auth::AuthError, users::UserError},
     models::tokens::Tokens,
-    repositories::{is_unique_violation, users::UserRepository},
+    repositories::is_unique_violation,
     schemas::{
         tokens::RefreshToken,
         users::{LoginUser, RegisterUser},

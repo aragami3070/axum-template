@@ -14,45 +14,11 @@ pub struct Limit(pub u64);
 #[derive(NewTypeDeref, Deserialize)]
 pub struct Offset(pub u64);
 
-pub trait UserRepository {
-    async fn get<'e, E>(
-        &self,
-        executor: E,
-        offset: &Offset,
-        limit: &Limit,
-    ) -> sqlx::Result<Vec<User>>
-    where
-        E: Executor<'e, Database = Postgres>;
-    async fn get_by_id<'e, E>(&self, executor: E, id: &Uuid) -> sqlx::Result<Option<User>>
-    where
-        E: Executor<'e, Database = Postgres>;
-    async fn get_by_email<'e, E>(&self, executor: E, email: &str) -> sqlx::Result<Option<User>>
-    where
-        E: Executor<'e, Database = Postgres>;
-    async fn check_login<'e, E>(
-        &self,
-        executor: E,
-        email: &str,
-        password_hash: &str,
-    ) -> sqlx::Result<Option<User>>
-    where
-        E: Executor<'e, Database = Postgres>;
-    async fn create_admin<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
-    where
-        E: Executor<'e, Database = Postgres>;
-    async fn create<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
-    where
-        E: Executor<'e, Database = Postgres>;
-    async fn update<'e, E>(&self, executor: E, user: User) -> sqlx::Result<PgQueryResult>
-    where
-        E: Executor<'e, Database = Postgres>;
-}
-
 #[derive(Clone, Default)]
 pub struct UserRepo;
 
-impl UserRepository for UserRepo {
-    async fn get<'e, E>(
+impl UserRepo {
+    pub async fn get<'e, E>(
         &self,
         executor: E,
         offset: &Offset,
@@ -73,7 +39,7 @@ impl UserRepository for UserRepo {
         .await
     }
 
-    async fn get_by_id<'e, E>(&self, executor: E, id: &Uuid) -> sqlx::Result<Option<User>>
+    pub async fn get_by_id<'e, E>(&self, executor: E, id: &Uuid) -> sqlx::Result<Option<User>>
     where
         E: Executor<'e, Database = Postgres>,
     {
@@ -88,7 +54,7 @@ impl UserRepository for UserRepo {
         .await
     }
 
-    async fn get_by_email<'e, E>(&self, executor: E, email: &str) -> sqlx::Result<Option<User>>
+    pub async fn get_by_email<'e, E>(&self, executor: E, email: &str) -> sqlx::Result<Option<User>>
     where
         E: Executor<'e, Database = Postgres>,
     {
@@ -103,7 +69,7 @@ impl UserRepository for UserRepo {
         .await
     }
 
-    async fn check_login<'e, E>(
+    pub async fn check_login<'e, E>(
         &self,
         executor: E,
         email: &str,
@@ -124,7 +90,7 @@ impl UserRepository for UserRepo {
         .await
     }
 
-    async fn create_admin<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
+    pub async fn create_admin<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = Postgres>,
     {
@@ -145,7 +111,7 @@ impl UserRepository for UserRepo {
         .await
     }
 
-    async fn create<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
+    pub async fn create<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = Postgres>,
     {
@@ -165,7 +131,7 @@ impl UserRepository for UserRepo {
         .await
     }
 
-    async fn update<'e, E>(&self, executor: E, user: User) -> sqlx::Result<PgQueryResult>
+    pub async fn update<'e, E>(&self, executor: E, user: User) -> sqlx::Result<PgQueryResult>
     where
         E: Executor<'e, Database = Postgres>,
     {

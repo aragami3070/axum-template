@@ -15,7 +15,7 @@ use crate::{
     models::users::{Role, User},
     repositories::{
         is_unique_violation,
-        users::{Limit, Offset, UserRepository},
+        users::{Limit, Offset},
     },
     schemas::users::{RegisterUser, UserResponse},
     services::auth::tokens::Claims,
