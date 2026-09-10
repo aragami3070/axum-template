@@ -123,17 +123,11 @@ pub async fn create_admin(
     State(state): State<AppState>,
     Json(user_data): Json<RegisterUser>,
 ) -> Result<impl IntoResponse, UserError> {
-    let mut tx = state.begin_transaction().await?;
-
-    let admin = match UserRepo.create_admin(&mut *tx, user_data).await {
-        Ok(admin) => admin,
-        Err(e) if is_unique_violation(&e) => return Err(UserError::UserAlreadyExists),
-        Err(e) => return Err(UserError::Db(e)),
-    };
-
-    tx.commit().await?;
-
-    Ok((StatusCode::OK, Json(UserResponse::from(admin))))
+    match UserRepo.create_admin(&state.db_pool, user_data).await {
+        Ok(admin) => Ok((StatusCode::OK, Json(UserResponse::from(admin)))),
+        Err(e) if is_unique_violation(&e) => Err(UserError::UserAlreadyExists),
+        Err(e) => Err(UserError::Db(e)),
+    }
 }
 
 #[utoipa::path(
@@ -156,16 +150,14 @@ pub async fn update(
     State(state): State<AppState>,
     Json(user_data): Json<RegisterUser>,
 ) -> Result<impl IntoResponse, UserError> {
-    let mut tx = state.begin_transaction().await?;
     let mut user = User::from(user_data);
     user.id = claims.sub;
     user.role = claims.role.try_into()?;
 
-    if UserRepo.update(&mut *tx, user).await?.rows_affected() == 0 {
+    if UserRepo.update(&state.db_pool, user).await?.rows_affected() == 0 {
         return Err(UserError::NotFound);
     }
 
-    tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
