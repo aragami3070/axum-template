@@ -1,5 +1,4 @@
 mod config;
-mod traicing;
 mod errors;
 mod handlers;
 mod middlewares;
@@ -8,6 +7,7 @@ mod repositories;
 mod routes;
 mod schemas;
 mod services;
+mod traicing;
 
 use axum::Router;
 use dotenv::dotenv;
@@ -17,7 +17,10 @@ use tower_http::cors::{Any, CorsLayer};
 
 use config::*;
 
-use crate::{routes::{get_all_routes, get_swagger_routes}, traicing::init_tracing};
+use crate::{
+    routes::{get_all_routes, get_swagger_routes},
+    traicing::init_tracing,
+};
 
 #[tokio::main]
 async fn main() {
@@ -30,6 +33,7 @@ async fn main() {
         db_pool,
         config.secret_key.to_owned(),
         config.secret_refresh_key.to_owned(),
+        config.password_secret.to_owned(),
     );
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
 

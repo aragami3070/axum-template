@@ -82,7 +82,11 @@ impl TokenService {
 
         let _ = self
             .token_repo
-            .create(&mut *executor, (&user.id, &refresh_token))
+            .create(
+                &mut *executor,
+                (&user.id, &refresh_token),
+                self.secret_refresh.as_ref(),
+            )
             .await?;
 
         Ok(Tokens {
@@ -171,7 +175,7 @@ impl TokenService {
             .get(&mut *executor, &token_data.claims.sub)
             .await?
         {
-            Some(old_token) => old_token == hash(token),
+            Some(old_token) => old_token == hash(token, self.secret_refresh.as_ref()),
             None => return Err(TokenError::RefreshNotFound),
         };
 

@@ -123,7 +123,10 @@ pub async fn create_admin(
     State(state): State<AppState>,
     Json(user_data): Json<RegisterUser>,
 ) -> Result<impl IntoResponse, UserError> {
-    match UserRepo.create_admin(&state.db_pool, user_data).await {
+    match UserRepo
+        .create_admin(&state.db_pool, user_data, state.password_secret.as_ref())
+        .await
+    {
         Ok(admin) => Ok((StatusCode::OK, Json(UserResponse::from(admin)))),
         Err(e) if is_unique_violation(&e) => Err(UserError::UserAlreadyExists),
         Err(e) => Err(UserError::Db(e)),
@@ -150,7 +153,7 @@ pub async fn update(
     State(state): State<AppState>,
     Json(user_data): Json<RegisterUser>,
 ) -> Result<impl IntoResponse, UserError> {
-    let mut user = User::from(user_data);
+    let mut user = User::from_register(user_data, state.password_secret.as_ref());
     user.id = claims.sub;
     user.role = claims.role.try_into()?;
 

@@ -16,14 +16,14 @@ pub struct User {
     pub password_hash: String,
 }
 
-impl From<RegisterUser> for User {
-    fn from(value: RegisterUser) -> Self {
+impl User {
+    pub fn from_register(value: RegisterUser, secret: &str) -> Self {
         Self {
             id: Uuid::new_v4(),
             name: value.name,
             email: value.email,
             role: Role::User,
-            password_hash: hash(&value.password),
+            password_hash: hash(&value.password, secret),
         }
     }
 }
