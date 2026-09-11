@@ -11,6 +11,7 @@ pub struct Config {
     pub database_url: String,
     pub secret_key: String,
     pub secret_refresh_key: String,
+    pub password_secret: String,
 }
 
 impl Config {
@@ -19,6 +20,9 @@ impl Config {
             database_url: env::var("DATABASE_URL").expect(".env not loaded"),
             secret_key: env::var("JWT_SECRET").expect(".env not loaded"),
             secret_refresh_key: env::var("JWT_SECRET_REFRESH").expect(".env not loaded"),
+            password_secret: env::var("PASSWORD_SECRET")
+                .or_else(|_| env::var("JWT_SECRET"))
+                .expect(".env not loaded"),
         }
     }
 }
@@ -30,15 +34,22 @@ pub async fn get_db_pool(database_url: &str) -> PgPool {
 #[derive(Clone)]
 pub struct AppState {
     pub db_pool: PgPool,
+    pub password_secret: Arc<String>,
 
     // NOTE: Сервисы
     pub token_serv: Arc<TokenService>,
 }
 
 impl AppState {
-    pub fn new(db_pool: PgPool, secret_key: String, secret_refresh_key: String) -> Self {
+    pub fn new(
+        db_pool: PgPool,
+        secret_key: String,
+        secret_refresh_key: String,
+        password_secret: String,
+    ) -> Self {
         let secret_key = Arc::new(secret_key);
         let secret_refresh_key = Arc::new(secret_refresh_key);
+        let password_secret = Arc::new(password_secret);
 
         // NOTE: Репозитории
         let user_repo = Arc::new(UserRepo);
@@ -56,6 +67,7 @@ impl AppState {
 
         Self {
             db_pool,
+            password_secret,
             token_serv,
         }
     }

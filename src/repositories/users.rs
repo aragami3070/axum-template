@@ -90,11 +90,16 @@ impl UserRepo {
         .await
     }
 
-    pub async fn create_admin<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
+    pub async fn create_admin<'e, E>(
+        &self,
+        executor: E,
+        user: RegisterUser,
+        secret: &str,
+    ) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = Postgres>,
     {
-        let mut user_data: User = user.into();
+        let mut user_data = User::from_register(user, secret);
         user_data.role = crate::models::users::Role::Admin;
         sqlx::query_as!(
             User,
@@ -111,11 +116,16 @@ impl UserRepo {
         .await
     }
 
-    pub async fn create<'e, E>(&self, executor: E, user: RegisterUser) -> sqlx::Result<User>
+    pub async fn create<'e, E>(
+        &self,
+        executor: E,
+        user: RegisterUser,
+        secret: &str,
+    ) -> sqlx::Result<User>
     where
         E: Executor<'e, Database = Postgres>,
     {
-        let user_data: User = user.into();
+        let user_data = User::from_register(user, secret);
         sqlx::query_as!(
             User,
             "INSERT INTO users (id, name, email, role, password_hash)

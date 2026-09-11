@@ -24,6 +24,7 @@ impl TokenRepo {
         &self,
         executor: E,
         refresh_token_info: (&Uuid, &str),
+        secret: &str,
     ) -> sqlx::Result<PgQueryResult>
     where
         E: Executor<'e, Database = Postgres>,
@@ -32,7 +33,7 @@ impl TokenRepo {
             "INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)
             ON CONFLICT (user_id) DO UPDATE SET token = $2",
             refresh_token_info.0,
-            hash(refresh_token_info.1)
+            hash(refresh_token_info.1, secret)
         )
         .execute(executor)
         .await
